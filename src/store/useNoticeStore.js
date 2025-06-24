@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { notices as mockNotices } from '../lib/mockData';
+// import { notices as mockNotices } from '../lib/mockData';
 
 export const useNoticeStore = create((set, get) => ({
   notices: [],
