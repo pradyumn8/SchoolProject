@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-// import { students as mockStudents, divisions as mockDivisions } from '../lib/mockData';
+import { students as mockStudents, divisions as mockDivisions } from '../lib/mockData';
 
 export const useStudentStore = create((set, get) => ({
   students: [],

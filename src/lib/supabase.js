@@ -1,13 +1,14 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Initialize Supabase client - these would typically come from environment variables
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder-url.supabase.co';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-key';
+// Read environment variables
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+// Create Supabase client
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // Auth helpers
-export const signIn = async (email: string, password: string) => {
+export const signIn = async (email, password) => {
   return supabase.auth.signInWithPassword({ email, password });
 };
 
