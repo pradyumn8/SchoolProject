@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { create } from 'zustand';
 
-// Ensure VITE_API_URL includes your API base, e.g. "https://ebr-school-management-sytem.onrender.com//api"
+// Ensure VITE_API_URL includes your API base, e.g. "https://ebr-school-management-sytem.onrender.com/api"
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 export const useNoticeStore = create((set, get) => ({

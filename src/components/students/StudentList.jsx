@@ -1,4 +1,3 @@
-// src/components/StudentList.jsx
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useStudentStore } from '../../store/useStudentStore';
 import { Standard } from '../../pages/AddStudent';
@@ -82,7 +81,7 @@ const StudentList = ({
     if (!window.confirm(`Delete ${selectedIds.length} selected students?`)) return;
     try {
       await Promise.all(
-        selectedIds.map(id => axios.delete(`${import.meta.env.VITE_API_URL || 'https://ebr-school-management-sytem.onrender.com//api'}/students/${id}`))
+        selectedIds.map(id => axios.delete(`${import.meta.env.VITE_API_URL || 'https://ebr-school-management-sytem.onrender.com/api'}/students/${id}`))
       );
       await fetchStudents();
       setSelectedIds([]);
@@ -95,16 +94,6 @@ const StudentList = ({
     }
   };
 
-  // const handleDelete = async (student) => {
-  //   try {
-  //     await axios.delete(`https://ebr-school-management-sytem.onrender.com//api/students/${student._id}`);
-  //     await fetchStudents();
-  //     toast.success(`${student.name} has been deleted.`, { position: 'top-right' });
-  //   } catch (err) {
-  //     console.error('Delete failed:', err);
-  //     toast.error(`Could not delete ${student.name}.`, { position: 'top-right' });
-  //   }
-  // };
 
   if (loading) {
     return (
@@ -223,7 +212,7 @@ const StudentList = ({
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{student.rollNumber}</td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{student.grNumber || '-'}</td>
                   <td className="px-4 py-3 whitespace-nowrap"><div className="text-sm font-medium text-gray-900">{student.name}</div></td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{student.standard || '-'}</td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{student.standard || '-'} {student.divisionId || '-'}</td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{student.contactNumber || '-'}</td>
                   <td className="px-4 py-3 whitespace-nowrap text-center">
                     <button
@@ -241,7 +230,7 @@ const StudentList = ({
                       onClick={async () => {
                         if (window.confirm(`Delete ${student.name}?`)) {
                           try {
-                            await axios.delete(`${import.meta.env.VITE_API_URL || 'https://ebr-school-management-sytem.onrender.com//api'}/students/${student._id}`);
+                            await axios.delete(`${import.meta.env.VITE_API_URL || 'https://ebr-school-management-sytem.onrender.com/api'}/students/${student._id}`);
                             toast.success(`${student.name} deleted.`);
                             await fetchStudents();
                           } catch (err) {

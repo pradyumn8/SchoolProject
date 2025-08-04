@@ -35,7 +35,7 @@ const SendNotice = ({ onSubmit, isLoading = false }) => {
     const loadTemplates = async () => {
       setLoadingTemplates(true);
       try {
-        const res = await axios.get('https://ebr-school-management-sytem.onrender.com//api/templates');
+        const res = await axios.get('https://ebr-school-management-sytem.onrender.com/api/templates');
         setTemplates(res.data);
       } catch (err) {
         toast.error('Could not fetch templates');
@@ -51,7 +51,7 @@ const SendNotice = ({ onSubmit, isLoading = false }) => {
     const loadStudents = async () => {
       setLoadingStudents(true);
       try {
-        const res = await axios.get('https://ebr-school-management-sytem.onrender.com//api/students');
+        const res = await axios.get('https://ebr-school-management-sytem.onrender.com/api/students');
         setStudents(res.data);
         // derive unique divisions
         const map = {};

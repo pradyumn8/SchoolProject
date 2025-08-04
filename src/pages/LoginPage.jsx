@@ -23,7 +23,7 @@ const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [formErrors, setFormErrors] = useState({});
-   const [showPassword, setShowPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const navigate = useNavigate();
   const { login, user, loading, error, onAuthStateChanged } = useAuthStore();
@@ -93,6 +93,7 @@ const LoginPage = () => {
       navigate('/dashboard');
     } catch {
       // toast.promise already handled errors
+      toast.error('Failed to create account or sign in');
     }
   };
 
@@ -162,36 +163,36 @@ const LoginPage = () => {
                 required
               />
               <div className="relative">
-  <Input
-    label="Password"
-    type={showPassword ? 'text' : 'password'}
-    value={password}
-    onChange={e => setPassword(e.target.value)}
-    placeholder="Enter your password"
-    error={formErrors.password}
-    fullWidth
-    required
-    minLength={6}
-  />
-  <button
-    type="button"
-    onClick={() => setShowPassword(v => !v)}
-    tabIndex={-1}
-    className="
-      absolute
-      top-1/2
-      right-3
-      text-gray-400
-      hover:text-gray-600
-      focus:outline-none
-      "
-  >
-    {showPassword
-      ? <EyeOff className="h-5 w-5" />
-      : <Eye className="h-5 w-5" />
-    }
-  </button>
-</div>
+                <Input
+                  label="Password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                  error={formErrors.password}
+                  fullWidth
+                  required
+                  minLength={6}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(v => !v)}
+                  tabIndex={-1}
+                  className="
+                            absolute
+                            top-1/2
+                            right-3
+                          text-gray-400
+                          hover:text-gray-600
+                            focus:outline-none
+                            "
+                >
+                  {showPassword
+                    ? <EyeOff className="h-5 w-5" />
+                    : <Eye className="h-5 w-5" />
+                  }
+                </button>
+              </div>
 
               {signState === 'Sign In' && (
                 <div className="text-sm text-right">

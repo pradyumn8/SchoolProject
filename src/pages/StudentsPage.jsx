@@ -16,7 +16,7 @@ const StudentsPage = () => {
   const fileInputRef = useRef(null);
   const [bulkLoading, setBulkLoading] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
-  const API_URL = import.meta.env.VITE_API_URL || 'https://ebr-school-management-sytem.onrender.com//api';
+  const API_URL = import.meta.env.VITE_API_URL || 'https://ebr-school-management-sytem.onrender.com/api';
 
   const handleAddStudent = () => navigate('/add-student');
   const handleBulkClick = () => fileInputRef.current?.click();
@@ -50,8 +50,8 @@ const StudentsPage = () => {
 
   useEffect(() => {
     fetchStudents();
-    fetchDivisions();
-  }, [fetchStudents, fetchDivisions]);
+    // fetchDivisions();
+  }, [fetchStudents]);
 
   return (
     <motion.div
@@ -90,11 +90,14 @@ const StudentsPage = () => {
                   <li><strong>Click “Bulk Upload”</strong><br />File picker appears.</li>
                   <li><strong>Choose Your File</strong><br />Upload CSV or Excel (.xls/.xlsx). Wrong type? See error.</li>
                   <li><strong>Uploading & Processing</strong><br />System reads rows, saves data. Duplicates skip.</li>
+                  <li><strong>Note:</strong><br />Please upload csv for better experience.</li>
                   <li className="space-y-1">
                     <strong>Download Sample xls/xlsx File</strong>
                     <br />
                     <a
-                      href="https://example.com/your-template.csv"
+                      href="https://docs.google.com/spreadsheets/d/1zrRGNPPHjd3YymAgTb0m9rMI7fRtpnjL/edit?usp=sharing&ouid=115982550452215176203&rtpof=true&sd=true"
+                      target="_blank"
+                      rel="noopener noreferrer"
                       download
                       className="inline-block mt-1 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
                     >
@@ -105,12 +108,15 @@ const StudentsPage = () => {
                     <strong>Download Sample CSV File</strong>
                     <br />
                     <a
-                      href="https://example.com/your-template.csv"
+                      href="https://drive.google.com/file/d/132HYIhAA8E3H-cLFmIN1JrmsebG_Y5LA/view?usp=sharing"
+                      target="_blank"
+                      rel="noopener noreferrer"
                       download
                       className="inline-block mt-1 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
                     >
                       Download
                     </a>
+
                   </li>
 
                 </ol>
