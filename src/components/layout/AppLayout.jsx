@@ -4,7 +4,7 @@ import { useAuthStore } from '../../store/useAuthStore';
 import Header from './Header';
 
 const AppLayout = () => {
-  const { isAuthenticated, loading } = useAuthStore();
+  const { onAuthStateChanged, loading } = useAuthStore();
 
   if (loading) {
     return (
@@ -15,7 +15,7 @@ const AppLayout = () => {
   }
 
   // Redirect to login if not authenticated
-  if (!isAuthenticated) {
+  if (!onAuthStateChanged) {
     return <Navigate to="/login" replace />;
   }
 

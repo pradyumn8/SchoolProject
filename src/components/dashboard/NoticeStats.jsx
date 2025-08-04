@@ -72,16 +72,10 @@ const NoticeStats = ({ notices = [] }) => {
         trendValue="12%"
       />
       <StatsCard
-        title="Email Notifications"
+        title="Whatsapp Notifications"
         value={emailNotices}
-        icon={<Mail className="h-6 w-6 text-blue-600" />}
+        icon={<MessageSquare className="h-6 w-6 text-blue-600" />}
         description="Total notices sent via email"
-      />
-      <StatsCard
-        title="SMS Notifications"
-        value={smsNotices}
-        icon={<MessageSquare className="h-6 w-6 text-purple-600" />}
-        description="Total notices sent via SMS"
       />
       <StatsCard
         title="Students Notified"

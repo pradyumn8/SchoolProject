@@ -1,13 +1,14 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/useAuthStore';
-import { School, Menu, X, Bell, LogOut, User } from 'lucide-react';
+import { Menu, X, LogOut, User } from 'lucide-react';
 import Button from '../ui/Button';
 import Avatar from '../ui/Avatar';
+import { assets } from '../../assets/assets';
 
 const Header = () => {
   const [menuOpen, setMenuOpen] = React.useState(false);
-  const { user, isAuthenticated, logout } = useAuthStore();
+  const { user, onAuthStateChanged, logout } = useAuthStore();
   const navigate = useNavigate();
 
   const toggleMenu = () => {
@@ -24,11 +25,16 @@ const Header = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
+            {/* added school logo */}
             <Link to="/" className="flex items-center">
-              <School className="h-8 w-8 text-primary-600" />
+                  <img
+                    src={assets.logo}
+                    alt="School Logo"
+                    className="h-20 w-20 object-contain"
+                  />
             </Link>
 
-            {isAuthenticated && (
+            {onAuthStateChanged && (
               <nav className="hidden md:ml-8 md:flex md:space-x-8">
                 <Link 
                   to="/dashboard" 
@@ -52,12 +58,8 @@ const Header = () => {
             )}
           </div>
 
-          {isAuthenticated ? (
+          {onAuthStateChanged ? (
             <div className="flex items-center">
-              <button className="p-2 rounded-full text-gray-500 hover:text-gray-700 hover:bg-gray-100 focus:outline-none">
-                <Bell className="h-5 w-5" />
-              </button>
-
               <div className="ml-3 relative">
                 <div className="flex items-center gap-3">
                   <span className="hidden md:block text-sm font-medium text-gray-700">
@@ -109,7 +111,7 @@ const Header = () => {
       </div>
 
       {/* Mobile menu */}
-      {menuOpen && isAuthenticated && (
+      {menuOpen && onAuthStateChanged && (
         <div className="md:hidden bg-white border-b border-gray-200 animate-fade-in">
           <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3">
             <Link

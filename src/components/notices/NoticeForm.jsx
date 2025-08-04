@@ -1,312 +1,242 @@
 import React, { useState } from 'react';
-import { useStudentStore } from '../../store/useStudentStore';
-import Input from '../ui/Input';
-import Textarea from '../ui/Textarea';
-import Select from '../ui/Select';
+import toast from 'react-hot-toast';
+import axios from 'axios';
+
 import Button from '../ui/Button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '../ui/Card';
-import { AlertTriangle, Mail, MessageSquare } from 'lucide-react';
+import { AlertTriangle, Edit, FileUpIcon, Trash2 } from 'lucide-react';
+import { useNoticeStore } from '../../store/useNoticeStore';
 
-const NoticeForm = ({ onSubmit, isLoading = false }) => {
-  const { students, divisions } = useStudentStore();
+const NoticeForm = () => {
+  const { addNotice } = useNoticeStore();
 
-  const [formData, setFormData] = useState({
-    type: 'general',
-    title: '',
-    content: '',
-    recipientType: 'school',
-    divisionId: '',
-    targetIds: [],
-    email: true,
-    sms: false,
-  });
+  // Template type (fixed 'general' for now)
+  const [type] = useState('general');
 
+  // Title (first input) and AI generation
+  const [title, setTitle] = useState('');
+  const articleLength = [
+    { length: 50, text: 'Very Short (50 words)' },
+    { length: 100, text: 'Short (100 words)' },
+    { length: 150, text: 'Brief (150 words)' },
+    { length: 200, text: 'Medium (200 words)' },
+    { length: 250, text: 'Medium-Long (250 words)' },
+    { length: 300, text: 'Longer Medium (300 words)' },
+    { length: 400, text: 'Long (400 words)' },
+    { length: 500, text: 'Very Long (500 words)' },
+  ];
+  const [selectedLength, setSelectedLength] = useState(articleLength[0]);
+  const [generating, setGenerating] = useState(false);
+
+  // Content and attachment
+  const [content, setContent] = useState('');
+  const [attachment, setAttachment] = useState(null);
+  const [attachmentPreview, setAttachmentPreview] = useState(null);
+  const allowedExts = ['pdf', 'doc', 'docx', 'txt', 'mp4', 'jpg', 'png', 'jpeg', 'webp'];
+  const allowedTypes = [
+    'application/pdf', 'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'text/plain', 'video/mp4', 'image/jpeg', 'image/png', 'image/webp'
+  ];
+
+  // Validation & saving state
   const [errors, setErrors] = useState({});
+  const [saving, setSaving] = useState(false);
 
-  const noticeTypeOptions = [
-    { value: 'general', label: 'General Notice' },
-    { value: 'attendance', label: 'Attendance Notice' },
-    { value: 'parentMeeting', label: 'Parent Meeting Notice' },
-    { value: 'feeDue', label: 'Fee Due Notice' },
-  ];
-
-  const recipientTypeOptions = [
-    { value: 'school', label: 'Entire School' },
-    { value: 'bulk', label: 'Specific Class/Division' },
-    { value: 'individual', label: 'Individual Students' },
-  ];
-
-  const divisionOptions = divisions.map(division => ({
-    value: division.id.toString(),
-    label: `${division.name} - ${division.section}`,
-  }));
-
-  const getFilteredStudents = () => {
-    if (formData.divisionId) {
-      return students.filter(student => student.divisionId === parseInt(formData.divisionId));
-    }
-    return students;
-  };
-
-  const studentOptions = getFilteredStudents().map(student => ({
-    value: student.id,
-    label: `${student.name} (${student.rollNumber})`,
-  }));
-
-  const handleChange = (e) => {
-    const { name, value, type } = e.target;
-
-    if (type === 'checkbox') {
-      setFormData(prev => ({ ...prev, [name]: e.target.checked }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value,
-        ...(name === 'recipientType' && { targetIds: [] }),
-        ...(name === 'divisionId' && { targetIds: [] }),
-      }));
-    }
-
-    if (errors[name]) {
-      const newErrors = { ...errors };
-      delete newErrors[name];
-      setErrors(newErrors);
-    }
-  };
-
-  const handleMultiSelectChange = (e) => {
-    const selectedOptions = Array.from(e.target.selectedOptions).map(option => Number(option.value));
-    setFormData(prev => ({ ...prev, targetIds: selectedOptions }));
-
-    if (errors.targetIds) {
-      const newErrors = { ...errors };
-      delete newErrors.targetIds;
-      setErrors(newErrors);
-    }
-  };
-
-  const handleSubmit = (e) => {
+  // Generate AI content based on title
+  const onSubmitArticle = async (e) => {
     e.preventDefault();
-    const newErrors = {};
-
-    if (!formData.title.trim()) newErrors.title = 'Title is required';
-    if (!formData.content.trim()) newErrors.content = 'Content is required';
-    if (formData.recipientType === 'bulk' && !formData.divisionId) {
-      newErrors.divisionId = 'Please select a class/division';
-    }
-    if (formData.recipientType === 'individual' && formData.targetIds.length === 0) {
-      newErrors.targetIds = 'Please select at least one student';
-    }
-    if (!formData.email && !formData.sms) {
-      newErrors.sentVia = 'Please select at least one sending method';
-    }
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
+    if (!title.trim()) {
+      setErrors({ title: 'Title is required for AI generation' });
       return;
     }
-
-    const sentVia = [];
-    if (formData.email) sentVia.push('email');
-    if (formData.sms) sentVia.push('sms');
-
-    let targets = [];
-    if (formData.recipientType === 'school') {
-      targets = divisions.map(d => d.id);
-    } else if (formData.recipientType === 'bulk') {
-      targets = [parseInt(formData.divisionId)];
-    } else {
-      targets = formData.targetIds;
+    try {
+      setGenerating(true);
+      const { data } = await axios.post(
+        'http://localhost:4000/api/ai/generate-article',
+        { prompt: `Write a ${selectedLength.text} article on: ${title}`, length: selectedLength.length }
+      );
+      if (data.success) {
+        setContent(data.content);
+        setErrors(err => { const e = { ...err }; delete e.content; return e; });
+      } else {
+        toast.error(data.message);
+      }
+    } catch (err) {
+      toast.error(err.message);
+    } finally {
+      setGenerating(false);
     }
+  };
 
-    onSubmit({
-      type: formData.type,
-      title: formData.title,
-      content: formData.content,
-      recipients: {
-        type: formData.recipientType,
-        targets,
-      },
-      sentVia,
-    });
+  // Handle attachment
+  const handleFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!allowedExts.includes(ext) || !allowedTypes.includes(file.type)) {
+      setErrors(err => ({
+        ...err,
+        attachment: "Invalid file type. Please attach a file of type: pdf, doc, docx, txt, mp4, jpg, png, jpeg, webp."
+      }));
 
-    setFormData({
-      type: 'general',
-      title: '',
-      content: '',
-      recipientType: 'school',
-      divisionId: '',
-      targetIds: [],
-      email: true,
-      sms: false,
-    });
+      return;
+    }
+    setAttachment(file);
+    setAttachmentPreview({ name: file.name, size: `${(file.size / 1024).toFixed(1)} KB` });
+    setErrors(err => { const e = { ...err }; delete e.attachment; return e; });
+  };
+
+  // Submit form
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const newErr = {};
+    if (!title.trim()) newErr.title = 'Title is required';
+    if (!content.trim()) newErr.content = 'Content is required';
+    setErrors(newErr);
+    if (Object.keys(newErr).length) return;
+
+    try {
+      setSaving(true);
+      await addNotice({ type, title, content });
+      toast.success('Template saved!');
+      setTitle(''); setContent(''); setAttachment(null); setAttachmentPreview(null); setErrors({});
+    } catch (err) {
+      toast.error(err.message || 'Save failed');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <Card className="w-full">
-      <CardHeader>
-        <CardTitle>Create New Notice</CardTitle>
-      </CardHeader>
-
+      <CardHeader><CardTitle>Create New Template</CardTitle></CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Select
-              label="Notice Type"
-              name="type"
-              options={noticeTypeOptions}
-              value={formData.type}
-              onChange={(value) => handleChange({ target: { name: 'type', value } })}
-              fullWidth
-              required
-            />
 
-            <Select
-              label="Recipients"
-              name="recipientType"
-              options={recipientTypeOptions}
-              value={formData.recipientType}
-              onChange={(value) => handleChange({ target: { name: 'recipientType', value } })}
-              fullWidth
-              required
-            />
+          {/* Title input (first) */}
+          <input
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            placeholder="Enter the topic of your article"
+            className='w-full h-10 px-3 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-600' required
+          />
+          {errors.title && <p className="text-red-600 text-sm">{errors.title}</p>}
+
+          {/* AI Generation */}
+          <button
+            type="button"
+            onClick={onSubmitArticle}
+            disabled={generating}
+            className="w-full flex justify-center items-center gap-2 bg-gradient-to-r from-[#226BFF] to-[#65ADFF] text-white px-4 py-2 rounded-lg curspor-pointer hover:opacity-90 transition-all duration-200"
+          >
+            {generating
+              ? <span className="w-4 h-4 my-1 border-2 border-t-transparent rounded-full animate-spin" />
+              : <><Edit className="w-5" /> Generate Article</>}
+          </button>
+
+          {/* Length selector */}
+          <p className="mt-4 text-sm font-medium">Article Length</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {articleLength.map((opt, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => setSelectedLength(opt)}
+                className={`text-xs px-4 py-1 border rounded-full transition-colors ${selectedLength.text === opt.text
+                  ? 'bg-blue-50 text-blue-700 border-blue-300'
+                  : 'bg-gray-100 text-gray-700 border-gray-300'
+                  }`}
+              >{opt.text}</button>
+            ))}
           </div>
 
-          {formData.recipientType === 'bulk' && (
-            <Select
-              label="Select Class/Division"
-              name="divisionId"
-              options={divisionOptions}
-              value={formData.divisionId}
-              onChange={(value) => handleChange({ target: { name: 'divisionId', value } })}
-              error={errors.divisionId}
-              fullWidth
-              required
-            />
-          )}
-
-          {formData.recipientType === 'individual' && (
-            <div>
-              <Select
-                label="Filter by Class/Division"
-                name="divisionId"
-                options={[{ value: '', label: 'All Classes' }, ...divisionOptions]}
-                value={formData.divisionId}
-                onChange={(value) => handleChange({ target: { name: 'divisionId', value } })}
-                fullWidth
-              />
-
-              <div className="mt-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Select Students
-                </label>
-                <select
-                  multiple
-                  size={5}
-                  value={formData.targetIds.map(String)}
-                  onChange={handleMultiSelectChange}
-                  className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
-                >
-                  {studentOptions.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                {errors.targetIds && (
-                  <p className="mt-1 text-sm text-red-600">{errors.targetIds}</p>
-                )}
-                <p className="mt-1 text-xs text-gray-500">
-                  Hold Ctrl/Cmd to select multiple students
-                </p>
-              </div>
+          {/* Content field */}
+          <div className='w-full p-4 bg-white rounded-lg flex flex-col border border-gray-200 min-h-96 max-h-[600px]'>
+            <div className='flex items-center gap-3'>
+              <Edit className='w-5 h-5 text-[#4A7AFF]' />
+              <h1 className='text-xl font-semibold'>Generated Notice</h1>
             </div>
-          )}
+            {/* // Display the generated content */}
 
-          <Input
-            label="Notice Title"
-            name="title"
-            value={formData.title}
-            onChange={handleChange}
-            placeholder="Enter notice title"
-            error={errors.title}
-            fullWidth
-            required
-          />
-
-          <Textarea
-            label="Notice Content"
-            name="content"
-            value={formData.content}
-            onChange={handleChange}
-            placeholder="Enter notice content"
-            error={errors.content}
-            fullWidth
-            required
-            rows={4}
-          />
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Send Via
-            </label>
-            <div className="space-y-2">
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="email"
-                  name="email"
-                  checked={formData.email}
-                  onChange={handleChange}
-                  className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                />
-                <label htmlFor="email" className="ml-2 block text-sm text-gray-700">
-                  <span className="flex items-center">
-                    <Mail className="h-4 w-4 mr-1" />
-                    Email
-                  </span>
-                </label>
-              </div>
-
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="sms"
-                  name="sms"
-                  checked={formData.sms}
-                  onChange={handleChange}
-                  className="h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                />
-                <label htmlFor="sms" className="ml-2 block text-sm text-gray-700">
-                  <span className="flex items-center">
-                    <MessageSquare className="h-4 w-4 mr-1" />
-                    SMS
-                  </span>
-                </label>
-              </div>
-            </div>
-            {errors.sentVia && (
-              <p className="mt-1 text-sm text-red-600">{errors.sentVia}</p>
-            )}
-          </div>
-
-          {Object.keys(errors).length > 0 && (
-            <div className="rounded-md bg-red-50 p-4">
-              <div className="flex">
-                <AlertTriangle className="h-5 w-5 text-red-400" />
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-red-800">
-                    Please fix the errors before submitting
-                  </h3>
+            {!content ? (
+              <div className='flex-1 flex justify-center items-center'>
+                <div className='text-sm flex flex-col items-center gap-5 text-gray-400'>
+                  <Edit className='w-9 h-9' />
+                  <p>Enter a topic and click "Generate Notice" to get started</p>
                 </div>
               </div>
+            ) : (
+              <textarea
+                className='mt-3 w-full h-[400px] p-3 border border-gray-300 rounded resize-y text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600'
+                value={content}
+                onChange={e => setContent(e.target.value)}
+              />
+            )}
+
+          </div>
+
+          {errors.content && <p className="text-red-600 text-sm">{errors.content}</p>}
+
+          {/* Attachment upload */}
+          <div className="w-full p-6 bg-white rounded-lg border border-gray-500/30 shadow-[0px_1px_15px_0px] shadow-black/10 text-sm">
+            <label
+              htmlFor="fileInput"
+              className="border-2 border-dotted border-gray-400 p-8 mt-2 flex flex-col items-center gap-4 cursor-pointer hover:border-blue-500 transition"
+            >
+              <FileUpIcon className="w-9 h-9 text-gray-400" />
+              <p className="text-gray-400">
+                <span className="text-blue-500 underline">click here</span> to select a file
+              </p>
+              <input
+                type="file"
+                id="fileInput"
+                name="attachment"
+                onChange={handleFileUpload}
+                className="hidden"
+              />
+            </label>
+          </div>
+          {attachmentPreview && (
+            <div className="mt-2 p-2 bg-gray-100 rounded flex items-center justify-between">
+              <div>
+                <p className="font-medium text-gray-800">{attachmentPreview.name}</p>
+                <p className="text-xs text-gray-600">{attachmentPreview.size}</p>
+              </div>
+              <button
+                type="button"
+                title="Cancel"
+                className="p-2 rounded-full hover:bg-red-100 transition text-red-600 focus:ring-2 focus:ring-red-200"
+                onClick={() => { setAttachment(null); setAttachmentPreview(null); }}
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
             </div>
           )}
-        </CardContent>
+          {errors.attachment && (
+            <p className="mt-1 text-sm text-center text-red-600">{errors.attachment}</p>
+          )}
 
+          {/* Error banner */}
+          {Object.keys(errors).length > 0 && (
+            <div className="rounded-md bg-red-50 p-4">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-red-400" />
+                <p className="text-sm font-medium text-red-800">Please fix the errors before submitting</p>
+              </div>
+            </div>
+          )}
+
+        </CardContent>
         <CardFooter>
-          <Button type="submit" isLoading={isLoading} fullWidth>
-            Send Notice
+          <Button
+            type="submit"
+            fullWidth
+            disabled={saving}
+            isLoading={saving}
+            className="w-full flex justify-center items-center gap-2 bg-gradient-to-r from-[#226BFF] to-[#65ADFF] text-white px-4 py-2 rounded-lg curspor-pointer hover:opacity-90 transition-all duration-200"
+          >
+            {saving ? <span className="h-4 w-4 border-2 border-t-transparent rounded-full animate-spin" /> : <><Edit className="w-5" /> Save Notice</>}
           </Button>
         </CardFooter>
       </form>

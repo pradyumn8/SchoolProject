@@ -1,48 +1,42 @@
+import axios from 'axios';
 import { create } from 'zustand';
-import { notices as mockNotices } from '../lib/mockData';
+
+// Ensure VITE_API_URL includes your API base, e.g. "http://localhost:4000/api"
+const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
 export const useNoticeStore = create((set, get) => ({
   notices: [],
   loading: false,
   error: null,
 
+  // Fetch all saved notice templates
   fetchNotices: async () => {
     set({ loading: true, error: null });
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 800));
-
-      // Use mock data
-      set({ notices: mockNotices, loading: false });
+      const { data } = await axios.get(`${API_BASE}/templates`);
+      set({ notices: data, loading: false });
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch notices';
-      set({ error: errorMessage, loading: false });
+      set({ error: err.message, loading: false });
     }
   },
 
+  // Add a new notice template
   addNotice: async (noticeData) => {
     set({ loading: true, error: null });
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 800));
-
-      const newNotice = {
-        ...noticeData,
-        id: Math.max(0, ...get().notices.map(n => n.id)) + 1,
-        created: new Date()
-      };
-
-      set(state => ({
-        notices: [newNotice, ...state.notices],
-        loading: false
-      }));
+      const { data } = await axios.post(
+        `${API_BASE}/templates`,
+        noticeData,
+        { headers: { 'Content-Type': 'application/json' } }
+      );
+      set(state => ({ notices: [data, ...state.notices], loading: false }));
+      return data;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to add notice';
-      set({ error: errorMessage, loading: false });
+      set({ error: err.response?.data?.error || err.message, loading: false });
+      throw err;
     }
   },
 
-  getNoticeById: (id) => {
-    return get().notices.find(notice => notice.id === id);
-  }
+  // Helper to get a notice by ID
+  getNoticeById: (id) => get().notices.find(n => n._id === id),
 }));

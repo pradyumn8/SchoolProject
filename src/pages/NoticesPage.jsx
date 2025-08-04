@@ -63,7 +63,7 @@ const NoticesPage = () => {
         <h1 className="text-2xl font-semibold text-gray-900">Notice Management</h1>
         <Link to="/notices/create">
           <Button icon={<Plus className="h-4 w-4" />}>
-            Create Notice
+            Create Template
           </Button>
         </Link>
       </div>

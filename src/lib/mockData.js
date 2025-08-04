@@ -2,7 +2,7 @@
   export const divisions = [
     { id: 1, name: 'X A', section: 'A' },
     { id: 2, name: 'X B', section: 'B' },
-    { id: 3, name: 'X C', section: 'C' },
+    { id: 3, name: 'X C', section: 'C' }, 
     { id: 4, name: 'X D', section: 'D' }
   ];
 
@@ -205,4 +205,46 @@ export const notices = [
     type: 'sports',
     created: new Date('2025-06-17T11:15:00')
   }
+];
+
+// Required data for dashboard using wati as mock data
+const today = new Date();
+export const messagesOverTime = Array.from({ length: 30 }).map((_, i) => {
+  const d = new Date(today);
+  d.setDate(today.getDate() - (29 - i));
+  return {
+    date: d.toISOString().slice(0, 10),       // YYYY-MM-DD
+    count: Math.floor(Math.random() * 80) + 20 // between 20 and 100
+  };
+});
+
+// 2. kpis: aggregate stats based on messagesOverTime
+export const kpis = {
+  totalMessages: messagesOverTime.reduce((sum, m) => sum + m.count, 0),
+  deliveryRate: 98,        // % delivered
+  readRate: 92,            // % read
+  avgResponseTime: 45,     // in minutes
+  failedMessages: 25       // absolute count
+};
+
+// 3. deliveryBreakdown: delivered / read / failed counts
+export const deliveryBreakdown = {
+  delivered: Math.round(kpis.totalMessages * (kpis.deliveryRate / 100)),
+  read:      Math.round(kpis.totalMessages * (kpis.readRate / 100)),
+  failed:    kpis.failedMessages
+};
+
+// 4. templateUsage: usage counts per template (for bar chart)
+export const templateUsage = [
+  { name: 'ExamReminder_v1',        count: 450 },
+  { name: 'FeeDueNotice_v2',        count: 300 },
+  { name: 'ParentMeetingInvite_v1', count: 250 },
+  { name: 'GeneralAnnouncement_v3', count: 150 },
+  { name: 'TransportUpdate_v1',     count: 100 }
+];
+
+// 5. sessionVsTemplate: percentage split (for pie/doughnut)
+export const sessionVsTemplate = [
+  { name: 'Template Messages', value: 75 },
+  { name: 'Session Messages',  value: 25 }
 ];

@@ -7,7 +7,7 @@ import { ArrowLeft } from 'lucide-react';
 import Button from '../components/ui/Button';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
-
+  
 const CreateNoticePage = () => {
   const { addNotice, loading } = useNoticeStore();
   const navigate = useNavigate();
@@ -23,22 +23,25 @@ const CreateNoticePage = () => {
   };
 
   return (
-    <motion.div 
+    <motion.div
       className="space-y-6"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
     >
       <div className="flex items-center gap-4">
-        <Button 
-          variant="ghost" 
-          size="sm" 
+        <Button
+          variant="ghost"
+          size="sm"
           icon={<ArrowLeft className="h-4 w-4" />}
           onClick={() => navigate(-1)}
         >
           Back
         </Button>
-        <h1 className="text-2xl font-semibold text-gray-900">Create New Notice</h1>
+        <h1 className="text-xl font-semibold text-gray-900">
+          Let AI help you create and save a new notice template
+        </h1>
+
       </div>
 
       <div className="grid md:grid-cols-3 gap-6">
@@ -49,32 +52,37 @@ const CreateNoticePage = () => {
         <div className="space-y-6">
           <div className="bg-white shadow rounded-lg overflow-hidden border border-gray-200">
             <div className="p-4 bg-gray-50 border-b border-gray-200">
-              <h3 className="text-base font-medium text-gray-900">Tips for Creating Notices</h3>
+              <h3 className="text-base font-medium text-gray-900">Tips for Creating Templates</h3>
             </div>
             <div className="p-4">
               <ul className="space-y-2 text-sm text-gray-600">
                 <li className="flex items-start">
                   <span className="text-primary-600 mr-2">•</span>
-                  Keep titles clear and descriptive
+                  We use Google Gemini to generate notice templates
                 </li>
                 <li className="flex items-start">
                   <span className="text-primary-600 mr-2">•</span>
-                  Include all relevant details in the content
+                 eg. Parents meeting notice (Select required length of words)
                 </li>
                 <li className="flex items-start">
                   <span className="text-primary-600 mr-2">•</span>
-                  Choose appropriate notice type for better organization
+                  First 5 templates are generated instantly for a fast experience
                 </li>
                 <li className="flex items-start">
                   <span className="text-primary-600 mr-2">•</span>
-                  Select the right recipients to avoid unnecessary messages
+                  Additional templates (beyond 5) are queued and processed in order
                 </li>
                 <li className="flex items-start">
                   <span className="text-primary-600 mr-2">•</span>
-                  Consider using both email and SMS for urgent notices
+                  You’ll see a “queued” or “in progress” status once you exceed 5
+                </li>
+                <li className="flex items-start">
+                  <span className="text-primary-600 mr-2">•</span>
+                  Adjust your inputs to refine template quality at any time
                 </li>
               </ul>
             </div>
+
           </div>
 
           <div className="bg-white shadow rounded-lg overflow-hidden border border-gray-200">

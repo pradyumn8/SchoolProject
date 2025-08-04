@@ -1,1 +1,21 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter+Tight:ital,wght@0,100..900;1,100..900&display=swap');
 @import "tailwindcss";
+
+
+*{
+    font-family: "Inter Tight", sans-serif;
+}
+
+.button-wrapper::before {
+    animation: spin-gradient 4s linear infinite;
+}
+
+@keyframes spin-gradient {
+    from {
+        transform: rotate(0deg);
+    }
+
+    to {
+        transform: rotate(360deg);
+    }
+}
