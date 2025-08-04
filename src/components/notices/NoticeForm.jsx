@@ -53,7 +53,7 @@ const NoticeForm = () => {
     try {
       setGenerating(true);
       const { data } = await axios.post(
-        'http://localhost:4000/api/ai/generate-article',
+        'https://ebr-school-management-sytem.onrender.com//api/ai/generate-article',
         { prompt: `Write a ${selectedLength.text} article on: ${title}`, length: selectedLength.length }
       );
       if (data.success) {

@@ -16,7 +16,7 @@ const StudentsPage = () => {
   const fileInputRef = useRef(null);
   const [bulkLoading, setBulkLoading] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+  const API_URL = import.meta.env.VITE_API_URL || 'https://ebr-school-management-sytem.onrender.com//api';
 
   const handleAddStudent = () => navigate('/add-student');
   const handleBulkClick = () => fileInputRef.current?.click();

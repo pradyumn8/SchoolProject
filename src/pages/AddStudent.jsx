@@ -46,7 +46,7 @@ export default function AddStudent() {
   useEffect(() => {
     if (!isEditing) return;
 
-    axios.get(`http://localhost:4000/api/students/${id}`)
+    axios.get(`https://ebr-school-management-sytem.onrender.com//api/students/${id}`)
       .then(res => {
         const s = res.data;
         setFormData({
@@ -79,13 +79,13 @@ export default function AddStudent() {
       let res;
       if (isEditing) {
         res = await axios.put(
-          `http://localhost:4000/api/students/${id}`,
+          `https://ebr-school-management-sytem.onrender.com//api/students/${id}`,
           formData
         );
         toast.success(res.data.msg || 'Student updated!', { position: 'top-right' });
       } else {
         res = await axios.post(
-          'http://localhost:4000/api/students',
+          'https://ebr-school-management-sytem.onrender.com//api/students',
           formData
         );
         toast.success(res.data.msg || 'Student added!', { position: 'top-right' });

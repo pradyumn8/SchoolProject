@@ -82,7 +82,7 @@ const StudentList = ({
     if (!window.confirm(`Delete ${selectedIds.length} selected students?`)) return;
     try {
       await Promise.all(
-        selectedIds.map(id => axios.delete(`${import.meta.env.VITE_API_URL || 'http://localhost:4000/api'}/students/${id}`))
+        selectedIds.map(id => axios.delete(`${import.meta.env.VITE_API_URL || 'https://ebr-school-management-sytem.onrender.com//api'}/students/${id}`))
       );
       await fetchStudents();
       setSelectedIds([]);
@@ -97,7 +97,7 @@ const StudentList = ({
 
   // const handleDelete = async (student) => {
   //   try {
-  //     await axios.delete(`http://localhost:4000/api/students/${student._id}`);
+  //     await axios.delete(`https://ebr-school-management-sytem.onrender.com//api/students/${student._id}`);
   //     await fetchStudents();
   //     toast.success(`${student.name} has been deleted.`, { position: 'top-right' });
   //   } catch (err) {
@@ -241,7 +241,7 @@ const StudentList = ({
                       onClick={async () => {
                         if (window.confirm(`Delete ${student.name}?`)) {
                           try {
-                            await axios.delete(`${import.meta.env.VITE_API_URL || 'http://localhost:4000/api'}/students/${student._id}`);
+                            await axios.delete(`${import.meta.env.VITE_API_URL || 'https://ebr-school-management-sytem.onrender.com//api'}/students/${student._id}`);
                             toast.success(`${student.name} deleted.`);
                             await fetchStudents();
                           } catch (err) {
