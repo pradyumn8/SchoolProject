@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useNoticeStore } from '../store/useNoticeStore';
 import NoticeCard from '../components/notices/NoticeCard';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
-import { Plus, Filter, Search } from 'lucide-react';
+import { Plus, Filter, Search, ClockAlert } from 'lucide-react';
 import Button from '../components/ui/Button';
 import { motion } from 'framer-motion';
 
@@ -20,19 +20,12 @@ const NoticesPage = () => {
     const matchesSearch =
       notice.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
       notice.content.toLowerCase().includes(searchQuery.toLowerCase());
-
     const matchesType = typeFilter === 'all' || notice.type === typeFilter;
-
     return matchesSearch && matchesType;
   });
 
-  const handleSearchChange = (e) => {
-    setSearchQuery(e.target.value);
-  };
-
-  const handleTypeFilterChange = (e) => {
-    setTypeFilter(e.target.value);
-  };
+  const handleSearchChange = (e) => setSearchQuery(e.target.value);
+  const handleTypeFilterChange = (e) => setTypeFilter(e.target.value);
 
   const noticeTypeOptions = [
     { value: 'all', label: 'All Types' },
@@ -46,15 +39,13 @@ const NoticesPage = () => {
     hidden: { opacity: 0 },
     show: {
       opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-      },
+      transition: { staggerChildren: 0.1 },
     },
   };
 
   const item = {
     hidden: { opacity: 0, y: 20 },
-    show: { opacity: 1, y: 0 },
+    show:   { opacity: 1, y: 0 },
   };
 
   return (
@@ -62,14 +53,12 @@ const NoticesPage = () => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <h1 className="text-2xl font-semibold text-gray-900">Notice Management</h1>
         <Link to="/notices/create">
-          <Button icon={<Plus className="h-4 w-4" />}>
-            Create Template
-          </Button>
+          <Button icon={<Plus className="h-4 w-4" />}>Create Template</Button>
         </Link>
       </div>
 
       <Card>
-        <CardHeader className="pb-2">
+        <CardHeader className="pb-2 bg-gray-100">
           <CardTitle className="text-lg font-medium">Filter Notices</CardTitle>
         </CardHeader>
         <CardContent>
@@ -94,9 +83,9 @@ const NoticesPage = () => {
                 onChange={handleTypeFilterChange}
                 className="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 text-sm"
               >
-                {noticeTypeOptions.map(option => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
+                {noticeTypeOptions.map(opt => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
                   </option>
                 ))}
               </select>
@@ -120,8 +109,13 @@ const NoticesPage = () => {
           initial="hidden"
           animate="show"
         >
-          {filteredNotices.map(notice => (
-            <motion.div key={notice.id} variants={item}>
+          
+          {filteredNotices.map((notice, idx) => (
+            <motion.div
+              key={notice.id ?? idx}  
+              variants={item}
+            >
+              
               <NoticeCard notice={notice} />
             </motion.div>
           ))}

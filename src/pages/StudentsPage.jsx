@@ -16,7 +16,7 @@ const StudentsPage = () => {
   const fileInputRef = useRef(null);
   const [bulkLoading, setBulkLoading] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
-  const API_URL = import.meta.env.VITE_API_URL || 'https://ebr-school-management-sytem.onrender.com/api';
+  const API_URL = import.meta.env.VITE_API_URL;
 
   const handleAddStudent = () => navigate('/add-student');
   const handleBulkClick = () => fileInputRef.current?.click();
@@ -30,13 +30,13 @@ const StudentsPage = () => {
     try {
       setBulkLoading(true);
       const { data } = await axios.post(
-        `${API_URL}/students/bulk-upload`,
+        `${API_URL}/api/students/bulk-upload`,
         form
       );
       if (data.success) {
         toast.success(data.message);
         await fetchStudents();
-        await fetchDivisions();
+        // await fetchDivisions();
       } else {
         toast.error(data.message || 'Upload failed');
       }
@@ -50,7 +50,6 @@ const StudentsPage = () => {
 
   useEffect(() => {
     fetchStudents();
-    // fetchDivisions();
   }, [fetchStudents]);
 
   return (
@@ -92,23 +91,10 @@ const StudentsPage = () => {
                   <li><strong>Uploading & Processing</strong><br />System reads rows, saves data. Duplicates skip.</li>
                   <li><strong>Note:</strong><br />Please upload csv for better experience.</li>
                   <li className="space-y-1">
-                    <strong>Download Sample xls/xlsx File</strong>
-                    <br />
-                    <a
-                      href="https://docs.google.com/spreadsheets/d/1zrRGNPPHjd3YymAgTb0m9rMI7fRtpnjL/edit?usp=sharing&ouid=115982550452215176203&rtpof=true&sd=true"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      download
-                      className="inline-block mt-1 px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
-                    >
-                      Download
-                    </a>
-                  </li>
-                  <li className="space-y-1">
                     <strong>Download Sample CSV File</strong>
                     <br />
                     <a
-                      href="https://drive.google.com/file/d/132HYIhAA8E3H-cLFmIN1JrmsebG_Y5LA/view?usp=sharing"
+                      href="https://drive.google.com/file/d/1RWtX45kMlFHKV2RDiW_dmRziqQDy2jkX/view?usp=sharing"
                       target="_blank"
                       rel="noopener noreferrer"
                       download
@@ -116,9 +102,7 @@ const StudentsPage = () => {
                     >
                       Download
                     </a>
-
                   </li>
-
                 </ol>
               </div>
             )}

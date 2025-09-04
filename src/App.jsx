@@ -14,6 +14,7 @@ import { useStudentStore } from './store/useStudentStore';
 import { useAuthStore } from './store/useAuthStore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from './firebase';
+import ResetPassword from './pages/ResetPassword';
 
 function App() {
   const { fetchStudents } = useStudentStore();
@@ -31,6 +32,7 @@ function App() {
       <Routes>
         {/* Public */}
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* Protected layout */}
         <Route element={<AppLayout />}>

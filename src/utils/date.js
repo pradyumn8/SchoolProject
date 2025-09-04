@@ -12,7 +12,7 @@ export const formatDistanceToNow = (input) => {
 
   // 2. Bail on invalid dates
   if (isNaN(date.getTime())) {
-    console.warn('formatDistanceToNow called with invalid date:', input);
+    // console.warn('formatDistanceToNow called with invalid date:', input);
     return '';
   }
 

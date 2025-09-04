@@ -35,18 +35,17 @@ export default function AddStudent() {
     parentName: '',
     standard: '',
     divisionId: '',
-    rollNumber: '',
     contactNumber: '',
-    email: '',
     address: '',
     grNumber: ''
   });
 
   // 1️⃣ If in edit mode, fetch the existing student once
   useEffect(() => {
+      const  API_URL= import.meta.env.VITE_API_URL
     if (!isEditing) return;
 
-    axios.get(`https://ebr-school-management-sytem.onrender.com/api/students/${id}`)
+    axios.get(`${API_URL}/api/students/${id}`)
       .then(res => {
         const s = res.data;
         setFormData({
@@ -54,9 +53,7 @@ export default function AddStudent() {
           parentName: s.parentName || '',
           standard: s.standard || '',
           divisionId: s.divisionId || '',
-          rollNumber: s.rollNumber || '',
           contactNumber: s.contactNumber || '',
-          email: s.email || '',
           address: s.address || '',
           grNumber: s.grNumber || ''
         });
@@ -74,18 +71,21 @@ export default function AddStudent() {
 
   // 2️⃣ Submit: POST if adding, PUT if editing
   const submitForm = async (e) => {
+    
+    const API_URL = import.meta.env.VITE_API_URL;
+    
     e.preventDefault();
     try {
       let res;
       if (isEditing) {
         res = await axios.put(
-          `https://ebr-school-management-sytem.onrender.com/api/students/${id}`,
+          `${API_URL}/api/students/${id}`,
           formData
         );
         toast.success(res.data.msg || 'Student updated!', { position: 'top-right' });
       } else {
         res = await axios.post(
-          'https://ebr-school-management-sytem.onrender.com/api/students',
+          `${API_URL}/api/students`,
           formData
         );
         toast.success(res.data.msg || 'Student added!', { position: 'top-right' });
@@ -124,6 +124,7 @@ export default function AddStudent() {
             </label>
             <input
               name="name"
+              type="text"
               value={formData.name}
               onChange={handleChange}
               placeholder="Enter full name"
@@ -139,6 +140,7 @@ export default function AddStudent() {
             </label>
             <input
               name="parentName"
+              type="text"
               value={formData.parentName}
               onChange={handleChange}
               placeholder="Enter parent's name"
@@ -184,21 +186,6 @@ export default function AddStudent() {
             </select>
           </div>
 
-          {/* Roll Number */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Roll Number*
-            </label>
-            <input
-              name="rollNumber"
-              value={formData.rollNumber}
-              onChange={handleChange}
-              placeholder="e.g. 1"
-              required
-              className="w-full border border-gray-300 rounded-lg p-2"
-            />
-          </div>
-
           {/* Contact Number */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -206,25 +193,11 @@ export default function AddStudent() {
             </label>
             <input
               name="contactNumber"
+              type='number'
               value={formData.contactNumber}
               onChange={handleChange}
               placeholder="Phone number(s)"
               required
-              className="w-full border border-gray-300 rounded-lg p-2"
-            />
-          </div>
-
-          {/* Email */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email
-            </label>
-            <input
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="example@gmail.com"
-              type="email"
               className="w-full border border-gray-300 rounded-lg p-2"
             />
           </div>
@@ -236,6 +209,7 @@ export default function AddStudent() {
             </label>
             <input
               name="grNumber"
+              type="text"
               value={formData.grNumber}
               onChange={handleChange}
               placeholder="Enter G.R. Number"
@@ -251,6 +225,7 @@ export default function AddStudent() {
             </label>
             <textarea
               name="address"
+              type="text"
               value={formData.address}
               onChange={handleChange}
               placeholder="Full address"

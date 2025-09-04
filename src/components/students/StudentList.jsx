@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useStudentStore } from '../../store/useStudentStore';
-import { Standard } from '../../pages/AddStudent';
 import Button from '../ui/Button';
 import { Search, Filter, Pencil, Trash2 } from 'lucide-react';
 import axios from 'axios';
@@ -11,43 +10,87 @@ const StudentList = ({
   onSelectStudent,
   selectable = false
 }) => {
-  const { fetchStudents, students, divisions, loading } = useStudentStore();
+  const { fetchStudents, students, loading } = useStudentStore();
   const navigate = useNavigate();
 
-  // existing filters
+  // filters
   const [searchQuery, setSearchQuery] = useState('');
   const [divisionFilter, setDivisionFilter] = useState('all');
-
-  // new standard filter state
   const [standardFilter, setStandardFilter] = useState('all');
 
-  // Multi-select state
+  // multi-select
   const [selectedIds, setSelectedIds] = useState([]);
   const headerCheckboxRef = useRef(null);
-
-
-  const handleSearchChange = (e) => setSearchQuery(e.target.value);
-  const handleDivisionChange = (e) =>
-    setDivisionFilter(e.target.value);
-  const handleStandardChange = (e) =>
-    setStandardFilter(e.target.value);
+  const hasSelection = selectedIds.length > 0;
 
   // fetch on mount
   useEffect(() => {
     fetchStudents();
   }, [fetchStudents]);
 
+  // ----- standards & divisions (for dropdowns) -----
+  const [standards, setStandards] = useState([]);
+  const [divisionsByStd, setDivisionsByStd] = useState({});
+  const [allDivisions, setAllDivisions] = useState([]);
+
+  useEffect(() => {
+    if (!Array.isArray(students)) return;
+
+    const stdSet = new Set();
+    const allDivSet = new Set();
+    const mapSets = {}; // { std: Set(divisions) }
+
+    for (const s of students) {
+      const std = String(s?.standard ?? '').trim();
+      const div = String(s?.divisionId ?? '').trim();
+
+      if (std) stdSet.add(std);
+      if (div) allDivSet.add(div);
+
+      if (std) {
+        if (!mapSets[std]) mapSets[std] = new Set();
+        if (div) mapSets[std].add(div);
+      }
+    }
+
+    const sortAlphaNum = (a, b) =>
+      a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+
+    setStandards(Array.from(stdSet).sort(sortAlphaNum));
+    setAllDivisions(Array.from(allDivSet).sort(sortAlphaNum));
+
+    const mapObj = {};
+    Object.keys(mapSets).forEach(std => {
+      mapObj[std] = Array.from(mapSets[std]).sort(sortAlphaNum);
+    });
+    setDivisionsByStd(mapObj);
+  }, [students]);
+
+  const divisionOptions = useMemo(() => {
+    if (standardFilter === 'all') return allDivisions;
+    return divisionsByStd[standardFilter] || [];
+  }, [standardFilter, allDivisions, divisionsByStd]);
+
+  // keep division valid for current standard
+  useEffect(() => {
+    if (divisionFilter === 'all') return;
+    if (!divisionOptions.includes(divisionFilter)) {
+      setDivisionFilter('all');
+    }
+  }, [standardFilter, divisionOptions, divisionFilter]);
+
+  // ----- main filtered list -----
   const filteredStudents = useMemo(() => {
+    if (!Array.isArray(students)) return [];
+    const q = searchQuery.toLowerCase();
     return students.filter(student => {
       const matchesSearch =
-        student.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        student.rollNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        student.grNumber?.toLowerCase().includes(searchQuery.toLowerCase());
+        student.name?.toLowerCase().includes(q) ||
+        student.grNumber?.toLowerCase().includes(q);
 
       const matchesDivision =
         divisionFilter === 'all' || student.divisionId === divisionFilter;
 
-      // apply the standard filter
       const matchesStandard =
         standardFilter === 'all' || student.standard === standardFilter;
 
@@ -55,15 +98,22 @@ const StudentList = ({
     });
   }, [students, searchQuery, divisionFilter, standardFilter]);
 
-  // Handle select all / individual
-  const allSelected = filteredStudents.length > 0 && selectedIds.length === filteredStudents.length;
-  const someSelected = selectedIds.length > 0 && selectedIds.length < filteredStudents.length;
+  // select-all / partial-select state (must be after filteredStudents)
+  const allSelected =
+    filteredStudents.length > 0 && selectedIds.length === filteredStudents.length;
+  const someSelected =
+    selectedIds.length > 0 && selectedIds.length < filteredStudents.length;
 
   useEffect(() => {
     if (headerCheckboxRef.current) {
       headerCheckboxRef.current.indeterminate = someSelected;
     }
   }, [someSelected]);
+
+  // prune selections when filters hide rows
+  useEffect(() => {
+    setSelectedIds(prev => prev.filter(id => filteredStudents.some(s => s._id === id)));
+  }, [filteredStudents]);
 
   const toggleSelectAll = () => {
     if (allSelected) setSelectedIds([]);
@@ -76,24 +126,43 @@ const StudentList = ({
     );
   };
 
-  // Bulk delete
+  // single delete (row)
+  const handleDeleteOne = async (student) => {
+    if (hasSelection) return; // guard while disabled
+    if (!window.confirm(`Delete ${student.name}?`)) return;
+    try {
+      await axios.delete(`${import.meta.env.VITE_API_URL}/api/students/${student._id}`);
+      toast.success(`${student.name} deleted.`);
+      await fetchStudents();
+    } catch (err) {
+      console.error(err);
+      toast.error(`Could not delete ${student.name}.`);
+    }
+  };
+
+  // bulk delete + hard refresh
   const handleBulkDelete = async () => {
+    if (!selectedIds.length) return;
     if (!window.confirm(`Delete ${selectedIds.length} selected students?`)) return;
     try {
       await Promise.all(
-        selectedIds.map(id => axios.delete(`${import.meta.env.VITE_API_URL || 'https://ebr-school-management-sytem.onrender.com/api'}/students/${id}`))
+        selectedIds.map(id =>
+          axios.delete(`${import.meta.env.VITE_API_URL}/api/students/${id}`)
+        )
       );
+      toast.success(`${selectedIds.length} students deleted.`);
       await fetchStudents();
       setSelectedIds([]);
 
-      toast.success(`${selectedIds.length} students deleted.`);
-
+      // hard refresh as requested
+      setTimeout(() => {
+        navigate(0); // or window.location.reload();
+      }, 300);
     } catch (err) {
       console.error(err);
       toast.error('Bulk delete failed.');
     }
   };
-
 
   if (loading) {
     return (
@@ -115,7 +184,7 @@ const StudentList = ({
             </div>
             <input
               type="text"
-              placeholder="Search by name, roll or GR"
+              placeholder="Search by name or G.R. No."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-3 py-2 border rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"
@@ -123,7 +192,7 @@ const StudentList = ({
           </div>
 
           {/* Division Filter */}
-          {/* <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2">
             <Filter className="h-4 w-4 text-gray-500" />
             <select
               value={divisionFilter}
@@ -131,11 +200,11 @@ const StudentList = ({
               className="py-2 px-3 border rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"
             >
               <option value="all">All Divisions</option>
-              {divisions.map(div => (
-                <option key={div._id} value={div._id}>{div.name}</option>
+              {divisionOptions.map(div => (
+                <option key={div} value={div}>{div}</option>
               ))}
             </select>
-          </div> */}
+          </div>
 
           {/* Standard Filter */}
           <div className="flex items-center space-x-2">
@@ -146,8 +215,8 @@ const StudentList = ({
               className="py-2 px-3 border rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"
             >
               <option value="all">All Standards</option>
-              {Standard.map(s => (
-                <option key={s.Standard} value={s.Standard}>{s.Standard}</option>
+              {standards.map(std => (
+                <option key={std} value={std}>{std}</option>
               ))}
             </select>
           </div>
@@ -155,17 +224,16 @@ const StudentList = ({
 
         {selectedIds.length > 0 && (
           <div className="flex justify-center">
-            <div class="relative inline-block p-0.5 rounded-full overflow-hidden hover:scale-105 transition duration-300 active:scale-100 before:content-[''] before:absolute before:inset-0 before:bg-[conic-gradient(from_0deg,_#0062ff,_#0077ff,_#0062ff)] button-wrapper">
+            <div className="relative inline-block p-0.5 rounded-full overflow-hidden hover:scale-105 transition duration-300 active:scale-100 before:content-[''] before:absolute before:inset-0 before:bg-[conic-gradient(from_0deg,_#0062ff,_#0077ff,_#0062ff)] button-wrapper">
               <Button
-                className="relative z-10 bg-red-700 text-white px-8 py-3 font-medium text-sm" variant="destructive"
+                className="relative z-10 bg-red-700 text-white px-8 py-3 font-medium text-sm"
+                variant="destructive"
                 icon={<Trash2 className="h-4 w-4" />}
                 onClick={handleBulkDelete}
               >
                 Delete Selected ({selectedIds.length})
               </Button>
-
             </div>
-
           </div>
         )}
       </div>
@@ -184,7 +252,6 @@ const StudentList = ({
                   className="h-4 w-4 text-primary-600 border-gray-300 rounded"
                 />
               </th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Roll No.</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">G.R. No.</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Standard</th>
@@ -209,36 +276,53 @@ const StudentList = ({
                       className="h-4 w-4 text-primary-600 border-gray-300 rounded"
                     />
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{student.rollNumber}</td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{student.grNumber || '-'}</td>
-                  <td className="px-4 py-3 whitespace-nowrap"><div className="text-sm font-medium text-gray-900">{student.name}</div></td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{student.standard || '-'} {student.divisionId || '-'}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    <div className="text-sm font-medium text-gray-900">{student.name}</div>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
+                    {student.standard || '-'} {student.divisionId || '-'}
+                  </td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{student.contactNumber || '-'}</td>
+
+                  {/* Update */}
                   <td className="px-4 py-3 whitespace-nowrap text-center">
                     <button
-                      title="Update"
-                      className="p-2 rounded-full hover:bg-primary-50 transition text-primary-600 focus:ring-2 focus:ring-primary-200"
-                      onClick={() => navigate(`/students/${student._id}/edit`)}
+                      type="button"
+                      title={hasSelection ? 'Disabled while multi-select is active' : 'Update'}
+                      disabled={hasSelection}
+                      aria-disabled={hasSelection}
+                      tabIndex={hasSelection ? -1 : 0}
+                      className={[
+                        'p-2 rounded-full transition',
+                        hasSelection
+                          ? 'opacity-40 cursor-not-allowed pointer-events-none text-gray-400'
+                          : 'text-primary-600 hover:bg-primary-50 focus:ring-2 focus:ring-primary-200'
+                      ].join(' ')}
+                      onClick={() => {
+                        if (hasSelection) return;
+                        navigate(`/students/${student._id}/edit`);
+                      }}
                     >
                       <Pencil className="h-4 w-4" />
                     </button>
                   </td>
+
+                  {/* Delete */}
                   <td className="px-4 py-3 whitespace-nowrap text-center">
                     <button
-                      title="Delete"
-                      className="p-2 rounded-full hover:bg-red-100 transition text-red-600 focus:ring-2 focus:ring-red-200"
-                      onClick={async () => {
-                        if (window.confirm(`Delete ${student.name}?`)) {
-                          try {
-                            await axios.delete(`${import.meta.env.VITE_API_URL || 'https://ebr-school-management-sytem.onrender.com/api'}/students/${student._id}`);
-                            toast.success(`${student.name} deleted.`);
-                            await fetchStudents();
-                          } catch (err) {
-                            console.error(err);
-                            toast.error(`Could not delete ${student.name}.`);
-                          }
-                        }
-                      }}
+                      type="button"
+                      title={hasSelection ? 'Disabled while multi-select is active' : 'Delete'}
+                      disabled={hasSelection}
+                      aria-disabled={hasSelection}
+                      tabIndex={hasSelection ? -1 : 0}
+                      className={[
+                        'p-2 rounded-full transition',
+                        hasSelection
+                          ? 'opacity-40 cursor-not-allowed pointer-events-none text-gray-400'
+                          : 'text-red-600 hover:bg-red-100 focus:ring-2 focus:ring-red-200'
+                      ].join(' ')}
+                      onClick={() => handleDeleteOne(student)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </button>

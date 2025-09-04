@@ -11,7 +11,7 @@ export const useStudentStore = create((set, get) => ({
   fetchStudents: async () => {
     set({ loading: true, error: null });
     try {
-      const res = await fetch(`${API_URL}/students`);
+      const res = await fetch(`${API_URL}/api/students`);
       if (!res.ok) throw new Error('Failed to fetch students');
       const data = await res.json();
       set({ students: data, loading: false });
@@ -23,20 +23,6 @@ export const useStudentStore = create((set, get) => ({
     }
   },
 
-  // fetchDivisions: async () => {
-  //   set({ loading: true, error: null });
-  //   try {
-  //     const res = await fetch(`${API_URL}/divisions`);
-  //     if (!res.ok) throw new Error('Failed to fetch divisions');
-  //     const data = await res.json();
-  //     set({ divisions: data, loading: false });
-  //   } catch (err) {
-  //     set({
-  //       error: err instanceof Error ? err.message : 'Failed to fetch divisions',
-  //       loading: false,
-  //     });
-  //   }
-  // },
 
   getStudentById: (id) =>
     get().students.find((s) => s.id === id || s._id === id),
@@ -53,7 +39,6 @@ export const useStudentStore = create((set, get) => ({
     return get().students.filter(
       (s) =>
         s.name.toLowerCase().includes(q) ||
-        s.rollNumber.toLowerCase().includes(q) ||
         s.grNumber?.toLowerCase().includes(q)
     );
   },

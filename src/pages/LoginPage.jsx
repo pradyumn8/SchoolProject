@@ -1,127 +1,139 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+// LoginPage.jsx
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
-import { Eye, EyeOff, LogIn, UserPlus } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import { assets } from '../assets/assets';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
-import { signup } from '../firebase';
 import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-  CardDescription,
+  Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription,
 } from '../components/ui/Card';
 import { motion } from 'framer-motion';
 import toast, { Toaster } from 'react-hot-toast';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../firebase';
+import { signInWithGoogle } from '../firebase'; // <-- NEW
+import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../firebase'; // for optional post-signup profile write
 
 const LoginPage = () => {
-  const [signState, setSignState] = useState('Sign In');
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [signState, setSignState] = useState("Sign In");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [formErrors, setFormErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const navigate = useNavigate();
-  const { login, user, loading, error, onAuthStateChanged } = useAuthStore();
+  const { user, error, clearError } = useAuthStore();
 
-  // Redirect if already logged in
-  useEffect(() => {
-    if (onAuthStateChanged && user) {
-      navigate('/dashboard');
-    }
-  }, [onAuthStateChanged, user, navigate]);
+  useEffect(() => { if (user) navigate("/dashboard"); }, [user, navigate]);
 
-  // Show any store error as toast
+  const lastErrorRef = useRef("");
   useEffect(() => {
-    if (error) {
+    if (error && error !== lastErrorRef.current) {
+      lastErrorRef.current = error;
+      toast.dismiss();
       toast.error(error);
+      clearError?.();
     }
-  }, [error]);
+  }, [error, clearError]);
 
   const validateForm = () => {
-    const errors = {};
-    if (signState === 'Sign Up' && !name.trim()) {
-      errors.name = 'Name is required';
-    }
-    if (!email.trim()) {
-      errors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      errors.email = 'Email is invalid';
-    }
-    if (!password) {
-      errors.password = 'Password is required';
-    } else if (password.length < 6) {
-      errors.password = 'Password must be at least 6 characters';
-    }
-    setFormErrors(errors);
-    if (Object.keys(errors).length > 0) {
-      // show first error as toast
-      toast.error(Object.values(errors)[0]);
-      return false;
+    const errs = {};
+    if (signState === "Sign Up" && !name.trim()) errs.name = "Name is required";
+    if (!email.trim()) errs.email = "Email is required";
+    else if (!/\S+@\S+\.\S+/.test(email)) errs.email = "Email is invalid";
+    if (!password) errs.password = "Password is required";
+    else if (password.length < 6) errs.password = "Password must be at least 6 characters";
+    setFormErrors(errs);
+    if (Object.keys(errs).length) {
+      toast.dismiss(); toast.error(Object.values(errs)[0]); return false;
     }
     return true;
   };
 
-  const user_auth = async (e) => {
-    e.preventDefault();
-    if (!validateForm()) return;
-
-    try {
-      if (signState === 'Sign In') {
-        await toast.promise(
-          login(email, password),
-          {
-            loading: 'Signing in…',
-            success: 'Signed in successfully!',
-            error: (err) => err.message || 'Sign in failed',
-          }
-        );
-      } else {
-        await toast.promise(
-          signup(name, email, password),
-          {
-            loading: 'Creating account…',
-            success: 'Account created!',
-            error: (err) => err.message || 'Sign up failed',
-          }
-        );
-      }
-      navigate('/dashboard');
-    } catch {
-      // toast.promise already handled errors
-      toast.error('Failed to create account or sign in');
+  const mapAuthError = (err) => {
+    switch (err?.code) {
+      case "auth/invalid-credential":
+      case "auth/invalid-login-credentials":
+      case "auth/wrong-password": return "Incorrect email or password.";
+      case "auth/user-not-found": return "No account found with that email.";
+      case "auth/too-many-requests": return "Too many attempts. Try again later.";
+      case "auth/email-already-in-use": return "Email is already registered.";
+      case "auth/invalid-email": return "Invalid email address.";
+      case "auth/weak-password": return "Password is too weak (min 6 characters).";
+      default: return err?.friendly || err?.message || "Authentication failed.";
     }
   };
 
-  const handleFormSwitch = (newState) => {
-    setSignState(newState);
-    setName('');
-    setEmail('');
-    setPassword('');
-    setFormErrors({});
+  const user_auth = async (e) => {
+    e.preventDefault();
+    if (submitting) return;
+    if (!validateForm()) return;
+
+    setSubmitting(true);
+    toast.dismiss();
+    clearError?.();
+
+    try {
+      if (signState === "Sign In") {
+        await toast.promise(
+          signInWithEmailAndPassword(auth, email, password),
+          { success: "Signed in successfully!", error: (err) => mapAuthError(err) }
+        );
+      } else {
+        const res = await toast.promise(
+          createUserWithEmailAndPassword(auth, email, password),
+          { success: "Account created!", error: (err) => mapAuthError(err) }
+        );
+        // Optional: also create a profile doc for email/password signups
+        await setDoc(doc(db, "users", res.user.uid), {
+          uid: res.user.uid,
+          name,
+          email: res.user.email,
+          authProvider: "local",
+          createdAt: serverTimestamp(),
+        }, { merge: true });
+      }
+      navigate("/dashboard");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleFormSwitch = (next) => {
+    setSignState(next);
+    setName(""); setEmail(""); setPassword("");
+    setFormErrors({}); lastErrorRef.current = "";
+    clearError?.(); toast.dismiss();
+  };
+
+  // NEW: Google handler
+  const handleGoogle = async () => {
+    if (submitting) return;
+    setSubmitting(true);
+    toast.dismiss();
+    try {
+      await toast.promise(
+        signInWithGoogle(),
+        { success: "Signed in with Google!", error: (err) => mapAuthError(err) }
+      );
+      navigate("/dashboard");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary-50 to-secondary-50 flex items-center justify-center p-4">
       <Toaster position="top-right" />
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="w-full max-w-md"
-      >
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className="w-full max-w-md">
         <div className="flex justify-center mb-6">
           <div className="bg-white p-3 rounded-full shadow-md">
-            <img
-              src={assets.logo}
-              alt="School Logo"
-              className="h-20 w-20 object-contain"
-            />
+            <img src={assets.logo} alt="School Logo" className="h-20 w-20 object-contain" />
           </div>
         </div>
 
@@ -178,47 +190,50 @@ const LoginPage = () => {
                   type="button"
                   onClick={() => setShowPassword(v => !v)}
                   tabIndex={-1}
-                  className="
-                            absolute
-                            top-1/2
-                            right-3
-                          text-gray-400
-                          hover:text-gray-600
-                            focus:outline-none
-                            "
+                  className="absolute top-1/2 right-3 text-gray-400 hover:text-gray-600 focus:outline-none"
                 >
-                  {showPassword
-                    ? <EyeOff className="h-5 w-5" />
-                    : <Eye className="h-5 w-5" />
-                  }
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
 
               {signState === 'Sign In' && (
                 <div className="text-sm text-right">
-                  <a
-                    href="#"
-                    className="font-medium text-primary-600 hover:text-primary-500"
-                  >
+                  <Link to="/reset-password" className="font-medium text-primary-600 hover:text-primary-500 hover:cursor-pointer hover:underline">
                     Forgot password?
-                  </a>
+                  </Link>
                 </div>
               )}
+
+              {/* Divider */}
+              <div className="flex items-center gap-3 my-2">
+                <div className="h-px bg-gray-200 flex-1" />
+                <span className="text-xs text-gray-500">or</span>
+                <div className="h-px bg-gray-200 flex-1" />
+              </div>
+
+              {/* Google Sign-In Button */}
+              <Button
+                type="button"
+                onClick={handleGoogle}
+                disabled={submitting}
+                className="
+mt-6 w-full rounded-full border border-gray-200 py-3 px-4
+              flex items-center justify-center font-medium text-gray-900
+              hover:bg-blue-500 transition
+  "
+              >
+                <img
+                  alt="Google"
+                  src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                  className="h-5 w-5  "
+                />
+                <span className="font-medium">Continue with Google</span>
+              </Button>
+
             </CardContent>
 
             <CardFooter className="flex flex-col space-y-4">
-              <Button
-                type="submit"
-                fullWidth
-                isLoading={loading}
-                icon={
-                  !loading
-                    ? signState === 'Sign In'
-                      ? <LogIn className="h-4 w-4" />
-                      : <UserPlus className="h-4 w-4" />
-                    : undefined
-                }
-              >
+              <Button type="submit" fullWidth disabled={submitting}>
                 {signState}
               </Button>
 
