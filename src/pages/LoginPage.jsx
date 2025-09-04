@@ -203,7 +203,10 @@ const LoginPage = () => {
                   </Link>
                 </div>
               )}
-
+              {/* sign in button */}
+              <Button type="submit" fullWidth disabled={submitting}>
+                {signState}
+              </Button>
               {/* Divider */}
               <div className="flex items-center gap-3 my-2">
                 <div className="h-px bg-gray-200 flex-1" />
@@ -233,9 +236,7 @@ mt-6 w-full rounded-full border border-gray-200 py-3 px-4
             </CardContent>
 
             <CardFooter className="flex flex-col space-y-4">
-              <Button type="submit" fullWidth disabled={submitting}>
-                {signState}
-              </Button>
+
 
               <div className="text-center text-sm">
                 {signState === 'Sign In' ? (
