@@ -13,39 +13,48 @@ import { AlertTriangle, ArrowLeft, Search, Send } from 'lucide-react';
 const SendNotice = ({ onSubmit, isLoading = false }) => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { notice } = location.state || {};   // ✅ now "notice" is defined
+  const { notice } = location.state || {};   // ✅ notice is defined
 
-  // Template, student, and division data
+  // Data
   const [templates, setTemplates] = useState([]);
   const [students, setStudents] = useState([]);
+
+  // NEW: standards derived from students; divisions derived per selected standard
+  const [standards, setStandards] = useState([]);
   const [divisions, setDivisions] = useState([]);
+
+  // Loading flags
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [loadingStudents, setLoadingStudents] = useState(false);
+
   const [searchQuery, setSearchQuery] = useState("");
 
   const [formData, setFormData] = useState({
     templateId: '',
     content: '',
     recipientType: 'school',
+    standard: '',
     divisionId: '',
     targetIds: [],
   });
   const [errors, setErrors] = useState({});
 
-  // Pre-fill when notice exists
+  // Prefill from notice
   useEffect(() => {
     if (notice) {
       setFormData({
         templateId: notice.templateId || '',
         content: notice.content || '',
         recipientType: notice.recipients?.type || 'school',
+        // If bulk, we have a division target; we'll infer standard once students load
+        standard: '',
         divisionId: notice.recipients?.type === 'bulk' ? notice.recipients?.targets?.[0] : '',
-        targetIds: notice.recipients?.type === 'individual' ? notice.recipients?.targets || [] : [],
+        targetIds: notice.recipients?.type === 'individual' ? (notice.recipients?.targets || []) : [],
       });
     }
   }, [notice]);
 
-  // ✅ Drop-in fix: match template after templates load
+  // After templates load, match by id or title
   useEffect(() => {
     if (!notice || templates.length === 0) return;
 
@@ -54,7 +63,7 @@ const SendNotice = ({ onSubmit, isLoading = false }) => {
       : null;
 
     if (!matched && notice.title) {
-      const nTitle = notice.title.trim().toLowerCase();
+      const nTitle = (notice.title || '').trim().toLowerCase();
       matched = templates.find(t => (t.title || '').trim().toLowerCase() === nTitle);
     }
 
@@ -63,15 +72,15 @@ const SendNotice = ({ onSubmit, isLoading = false }) => {
     }
   }, [notice, templates]);
 
-  // Load templates from backend
+  // Load templates
   useEffect(() => {
-    const API_URL = import.meta.env.VITE_API_URL
+    const API_URL = import.meta.env.VITE_API_URL;
     const loadTemplates = async () => {
       setLoadingTemplates(true);
       try {
         const res = await axios.get(`${API_URL}/api/notices`);
         setTemplates(res.data);
-      } catch (err) {
+      } catch {
         toast.error('Could not fetch templates');
       } finally {
         setLoadingTemplates(false);
@@ -80,22 +89,22 @@ const SendNotice = ({ onSubmit, isLoading = false }) => {
     loadTemplates();
   }, []);
 
-  // Load students and derive divisions
+  // Load students, then derive standards; divisions will be derived when standard changes
   useEffect(() => {
-    const API_URL = import.meta.env.VITE_API_URL
+    const API_URL = import.meta.env.VITE_API_URL;
     const loadStudents = async () => {
       setLoadingStudents(true);
       try {
         const res = await axios.get(`${API_URL}/api/students`);
-        setStudents(res.data);
-        // derive unique divisions
-        const map = {};
-        res.data.forEach(s => {
-          const key = `${s.standard}-${s.divisionId}`;
-          if (!map[key]) map[key] = { standard: s.standard, id: s.divisionId };
-        });
-        setDivisions(Object.values(map));
-      } catch (err) {
+        setStudents(res.data || []);
+
+        // Unique standards from students
+        const stdSet = new Set(
+          (res.data || []).map(s => String(s.standard ?? '').trim()).filter(Boolean)
+        );
+        setStandards([...stdSet]);
+
+      } catch {
         toast.error('Could not fetch students');
       } finally {
         setLoadingStudents(false);
@@ -104,6 +113,34 @@ const SendNotice = ({ onSubmit, isLoading = false }) => {
     loadStudents();
   }, []);
 
+  // If we prefilled only divisionId (from notice) infer standard from students once loaded
+  useEffect(() => {
+    if (!students.length) return;
+    if (!formData.standard && formData.divisionId) {
+      const match = students.find(
+        s => String(s.divisionId) === String(formData.divisionId)
+      );
+      if (match?.standard) {
+        setFormData(fd => ({ ...fd, standard: String(match.standard) }));
+      }
+    }
+  }, [students, formData.divisionId, formData.standard]);
+
+  // When standard changes, derive its divisions from students
+  useEffect(() => {
+    if (!formData.standard) {
+      setDivisions([]);
+      return;
+    }
+    const divSet = new Set(
+      students
+        .filter(s => String(s.standard) === String(formData.standard))
+        .map(s => String(s.divisionId))
+        .filter(Boolean)
+    );
+    setDivisions([...divSet].map(id => ({ id, standard: formData.standard })));
+  }, [formData.standard, students]);
+
   // Options
   const templateOptions = templates.map(t => ({ value: t._id, label: t.title }));
   const recipientOptions = [
@@ -111,22 +148,33 @@ const SendNotice = ({ onSubmit, isLoading = false }) => {
     { value: 'bulk', label: 'Specific Standard' },
     { value: 'individual', label: 'Individual Students' },
   ];
-  const divisionOptions = divisions.map(d => ({ value: d.id, label: `${d.standard} ${d.id}` }));
-  const filteredStudents = formData.divisionId
-    ? students.filter(s => s.divisionId === formData.divisionId)
-    : students;
-  const studentOptions = filteredStudents.map(s => ({ value: s._id, label: `${s.name}` }));
+  const standardOptions = standards.map(s => ({ value: s, label: `${s}` }));
+  const divisionOptions = divisions.map(d => ({ value: d.id, label: `${d.id}` }));
+
+  // Students filtered by selected Standard and Division
+  const filteredStudents = students.filter(s => {
+    if (formData.standard && String(s.standard) !== String(formData.standard)) return false;
+    if (formData.divisionId && String(s.divisionId) !== String(formData.divisionId)) return false;
+    return true;
+  });
 
   // Handlers
   const handleInputChange = e => {
     const { name, value } = e.target;
     setFormData(fd => ({ ...fd, [name]: value }));
-    setErrors(err => { const e = { ...err }; delete e[name]; return e; });
+    setErrors(err => { const e2 = { ...err }; delete e2[name]; return e2; });
   };
 
   const handleSelectChange = (name, value) => {
-    setFormData(fd => ({ ...fd, [name]: value, ...(name === 'recipientType' ? { divisionId: '', targetIds: [] } : {}), ...(name === 'divisionId' ? { targetIds: [] } : {}) }));
-    setErrors(err => { const e = { ...err }; delete e[name]; return e; });
+    setFormData(fd => ({
+      ...fd,
+      [name]: value,
+      ...(name === 'recipientType' ? { standard: '', divisionId: '', targetIds: [] } : {}),
+      ...(name === 'standard'      ? { divisionId: '', targetIds: [] } : {}),
+      ...(name === 'divisionId'    ? { targetIds: [] } : {}),
+    }));
+    setErrors(err => { const e2 = { ...err }; delete e2[name]; return e2; });
+
     if (name === 'templateId') {
       const sel = templates.find(t => t._id === value);
       setFormData(fd => ({ ...fd, content: sel?.content || '' }));
@@ -136,7 +184,7 @@ const SendNotice = ({ onSubmit, isLoading = false }) => {
   const handleMultiSelectChange = e => {
     const selected = Array.from(e.target.selectedOptions).map(o => o.value);
     setFormData(fd => ({ ...fd, targetIds: selected }));
-    setErrors(err => { const e = { ...err }; delete e.targetIds; return e; });
+    setErrors(err => { const e2 = { ...err }; delete e2.targetIds; return e2; });
   };
 
   const handleSubmit = e => {
@@ -144,19 +192,46 @@ const SendNotice = ({ onSubmit, isLoading = false }) => {
     const newErr = {};
     if (!formData.templateId) newErr.templateId = 'Please select a template';
     if (!formData.content.trim()) newErr.content = 'Content is required';
-    if (formData.recipientType === 'bulk' && !formData.divisionId) newErr.divisionId = 'Please select a division';
-    if (formData.recipientType === 'individual' && formData.targetIds.length === 0) newErr.targetIds = 'Please select at least one student';
+
+    if (formData.recipientType === 'bulk') {
+      if (!formData.standard)   newErr.standard  = 'Please select a standard';
+      if (!formData.divisionId) newErr.divisionId = 'Please select a division';
+    }
+    if (formData.recipientType === 'individual' && formData.targetIds.length === 0) {
+      newErr.targetIds = 'Please select at least one student';
+    }
+
     setErrors(newErr);
     if (Object.keys(newErr).length) return;
 
+    // Build targets
     let targets;
-    if (formData.recipientType === 'school') targets = divisions.map(d => d.id);
-    else if (formData.recipientType === 'bulk') targets = [formData.divisionId];
-    else targets = formData.targetIds;
+    if (formData.recipientType === 'school') {
+      // Unique divisionIds across entire school (same as your previous behavior)
+      const allDivisionIds = [...new Set(students.map(s => s.divisionId).filter(Boolean))];
+      targets = allDivisionIds;
+    } else if (formData.recipientType === 'bulk') {
+      targets = [formData.divisionId];
+    } else {
+      targets = formData.targetIds;
+    }
 
     const sel = templates.find(t => t._id === formData.templateId);
-    onSubmit({ type: 'general', title: sel?.title, content: formData.content, recipients: { type: formData.recipientType, targets } });
-    setFormData({ templateId: '', content: '', recipientType: 'school', divisionId: '', targetIds: [] });
+    onSubmit({
+      type: 'general',
+      title: sel?.title,
+      content: formData.content,
+      recipients: { type: formData.recipientType, targets }
+    });
+
+    setFormData({
+      templateId: '',
+      content: '',
+      recipientType: 'school',
+      standard: '',
+      divisionId: '',
+      targetIds: []
+    });
   };
 
   const greeting = useMemo(() => {
@@ -165,22 +240,22 @@ const SendNotice = ({ onSubmit, isLoading = false }) => {
       return `Dear ${stu?.name || 'Student'},\n\n`;
     }
     if (formData.recipientType === 'bulk' && formData.divisionId) {
-      return `Dear Students of ${formData.divisionId},\n\n`;
+      return `Dear Students of Std ${formData.standard} - ${formData.divisionId},\n\n`;
     }
-    // fallback for entire school
     return `Dear All,\n\n`;
-  }, [formData.recipientType, formData.targetIds, formData.divisionId, students]);
-
+  }, [formData.recipientType, formData.targetIds, formData.divisionId, formData.standard, students]);
 
   return (
     <Card className="w-full">
       <div className="flex items-center mb-4">
-        <Button variant="ghost" size="sm" icon={<ArrowLeft className="h-4 w-4" />} onClick={() => navigate(-1)}>Back</Button>
+        <Button variant="ghost" size="sm" icon={<ArrowLeft className="h-4 w-4" />} onClick={() => navigate(-1)}>
+          Back
+        </Button>
       </div>
       <CardHeader><CardTitle>Send New Notice</CardTitle></CardHeader>
+
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
-
           <Select
             label="Template"
             name="templateId"
@@ -203,15 +278,28 @@ const SendNotice = ({ onSubmit, isLoading = false }) => {
 
           {formData.recipientType === 'bulk' && (
             <Select
+              label="Select Standard"
+              name="standard"
+              options={[{ value: '', label: loadingStudents ? 'Loading...' : 'Select Standard' }, ...standardOptions]}
+              value={formData.standard}
+              onChange={val => handleSelectChange('standard', val)}
+              error={errors.standard}
+              fullWidth
+            />
+          )}
+
+          {formData.recipientType === 'bulk' && (
+            <Select
               label="Select Division"
               name="divisionId"
-              options={[{ value: '', label: loadingStudents ? 'Loading...' : 'All Standard & Divisions' }, ...divisionOptions]}
+              options={[{ value: '', label: formData.standard ? 'Select Division' : 'Select Standard first' }, ...divisionOptions]}
               value={formData.divisionId}
               onChange={val => handleSelectChange('divisionId', val)}
               error={errors.divisionId}
               fullWidth
             />
           )}
+
           {formData.recipientType === 'individual' && (
             <div>
               <p className="mt-1 text-xs text-gray-500">
@@ -247,7 +335,7 @@ const SendNotice = ({ onSubmit, isLoading = false }) => {
               >
                 {filteredStudents
                   .filter((s) =>
-                    s.name.toLowerCase().includes(searchQuery.toLowerCase())
+                    (s.name || '').toLowerCase().includes(searchQuery.toLowerCase())
                   )
                   .map((s) => (
                     <option key={s._id} value={s._id}>
@@ -265,12 +353,11 @@ const SendNotice = ({ onSubmit, isLoading = false }) => {
           <Textarea
             label="Notice Content"
             name="content"
-            // value={`Dear ${formData.content}`}
             value={greeting + formData.content}
-            // onChange={handleInputChange}
             onChange={e => {
-              // strip out the greeting when the user edits, if you like:
-              const raw = e.target.value.replace(greeting, '');
+              const raw = e.target.value.startsWith(greeting)
+                ? e.target.value.slice(greeting.length)
+                : e.target.value;
               handleInputChange({ target: { name: 'content', value: raw } });
             }}
             error={errors.content}
@@ -288,14 +375,15 @@ const SendNotice = ({ onSubmit, isLoading = false }) => {
             </div>
           )}
         </CardContent>
-        <CardFooter>
 
+        <CardFooter>
           <Button
             className="w-full flex justify-center 
           items-center gap-2 bg-gradient-to-r from-[#226BFF] 
           to-[#65ADFF] text-white px-4 py-2 rounded-lg 
-          curspor-pointer hover:opacity-90 transition-all 
-          duration-200" type="submit"
+          cursor-pointer hover:opacity-90 transition-all 
+          duration-200"
+            type="submit"
             isLoading={isLoading} fullWidth
             icon={<Send className="h-4 w-4"
             />}>Send Notice</Button>
