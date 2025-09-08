@@ -1,4 +1,3 @@
-// LoginPage.jsx
 import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
@@ -119,7 +118,7 @@ const LoginPage = () => {
     try {
       await toast.promise(
         signInWithGoogle(),
-        { success: "Signed in with Google!", error: (err) => mapAuthError(err) }
+        // { success: "Signed in with Google!", error: (err) => mapAuthError(err) }
       );
       navigate("/dashboard");
     } finally {
@@ -219,11 +218,9 @@ const LoginPage = () => {
                 type="button"
                 onClick={handleGoogle}
                 disabled={submitting}
-                className="
-mt-6 w-full rounded-full border border-gray-200 py-3 px-4
+                className="mt-6 w-full rounded-full border border-gray-200 py-3 px-4
               flex items-center justify-center font-medium text-gray-900
-              hover:bg-blue-500 transition
-  "
+              hover:bg-blue-500 transition"
               >
                 <img
                   alt="Google"
